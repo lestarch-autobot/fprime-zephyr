@@ -1,0 +1,48 @@
+=== allocator recompiled in this build ===
+1
+=== final link line --wrap ===
+      2 -Wl,--wrap=ff_memalloc
+      2 -Wl,--wrap=ff_memfree
+=== symbols ===
+20001c08 000011b0 b Zephyr::(anonymous namespace)::s_pool
+10114529 000000a4 T __wrap_ff_memalloc
+101145cd 00000098 T __wrap_ff_memfree
+1010f399 0000001c T ff_mutex_create
+10180d07 00000002 T ff_mutex_delete
+1010f3d9 00000010 T ff_mutex_give
+1010f3b5 00000024 T ff_mutex_take
+=== static ctors ===
+none
+=== size ===
+   text	   data	    bss	    dec	    hex	filename
+ 676392	    624	 300829	 977845	  eebb5	build-fprime-automatic-zephyr/zephyr/zephyr.elf
+=== .config ===
+CONFIG_HEAP_MEM_POOL_SIZE=256
+CONFIG_FS_FATFS_EXFAT=y
+CONFIG_FS_FATFS_LFN=y
+CONFIG_FS_FATFS_LFN_MODE_HEAP=y
+CONFIG_FS_FATFS_MAX_LFN=255
+CONFIG_FS_FATFS_REENTRANT=y
+=== call sites (objdump: /home/ubuntu/zephyr-sdk-1.0.1/gnu/arm-zephyr-eabi/bin/arm-zephyr-eabi-objdump) ===
+__wrap_ff_memalloc: 10
+__wrap_ff_memfree: 13
+ff_memalloc: 0
+ff_memfree: 0
+k_malloc: 0
+=== callers of __wrap_ff_memalloc ===
+      1 <dir_clear>:
+      1 <f_mkdir>:
+      1 <f_mkfs>:
+      1 <f_open>:
+      1 <f_opendir>:
+      1 <f_readdir>:
+      1 <f_rename>:
+      1 <f_stat>:
+      1 <f_sync>:
+      1 <f_unlink>:
+=== call sites incl. tail branches (bl/blx/b/b.w) ===
+__wrap_ff_memalloc: 10
+__wrap_ff_memfree: 13
+ff_memalloc: 0
+ff_memfree: 0
+k_malloc: 0

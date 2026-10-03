@@ -1,0 +1,67 @@
+UpdateCTestConfiguration  from :/home/ubuntu/utproj/build-fprime-automatic-native-ut/DartConfiguration.tcl
+Parse Config file:/home/ubuntu/utproj/build-fprime-automatic-native-ut/DartConfiguration.tcl
+UpdateCTestConfiguration  from :/home/ubuntu/utproj/build-fprime-automatic-native-ut/DartConfiguration.tcl
+Parse Config file:/home/ubuntu/utproj/build-fprime-automatic-native-ut/DartConfiguration.tcl
+Test project /home/ubuntu/utproj/build-fprime-automatic-native-ut
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 131
+    Start 131: fprime-zephyr_Fs_FatFilenameAllocator_ut_exe
+
+131: Test command: /home/ubuntu/utproj/build-fprime-automatic-native-ut/bin/Linux/fprime-zephyr_Fs_FatFilenameAllocator_ut_exe
+131: Working Directory: /home/ubuntu/repos/fprime-zephyr/fprime-zephyr/Fs/FatFilenameAllocator
+131: Test timeout computed to be: 1500
+131: [==========] Running 14 tests from 3 test suites.
+131: [----------] Global test environment set-up.
+131: [----------] 2 tests from FatFilenameAllocatorDeathTest
+131: [ RUN      ] FatFilenameAllocatorDeathTest.DefaultAssertHookAbortsOnForeignPointer
+131: [       OK ] FatFilenameAllocatorDeathTest.DefaultAssertHookAbortsOnForeignPointer (16 ms)
+131: [ RUN      ] FatFilenameAllocatorDeathTest.DefaultAssertHookAbortsOnDoubleFree
+131: [       OK ] FatFilenameAllocatorDeathTest.DefaultAssertHookAbortsOnDoubleFree (15 ms)
+131: [----------] 2 tests from FatFilenameAllocatorDeathTest (32 ms total)
+131: 
+131: [----------] 11 tests from FatFilenameAllocatorTest
+131: [ RUN      ] FatFilenameAllocatorTest.InitialStats
+131: [       OK ] FatFilenameAllocatorTest.InitialStats (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.AllocateAllSlotsThenExhaust
+131: [       OK ] FatFilenameAllocatorTest.AllocateAllSlotsThenExhaust (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.SlotsAreAlignedAndDisjoint
+131: [       OK ] FatFilenameAllocatorTest.SlotsAreAlignedAndDisjoint (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.ReleaseAndReuseFirstFree
+131: [       OK ] FatFilenameAllocatorTest.ReleaseAndReuseFirstFree (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.RepeatedCyclesDoNotLeak
+131: [       OK ] FatFilenameAllocatorTest.RepeatedCyclesDoNotLeak (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.WrongSizeRequestsRejected
+131: [       OK ] FatFilenameAllocatorTest.WrongSizeRequestsRejected (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.WrongSizeRejectedWhenExhaustedCountsAsRejected
+131: [       OK ] FatFilenameAllocatorTest.WrongSizeRejectedWhenExhaustedCountsAsRejected (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.ReleaseNullIsNoOp
+131: [       OK ] FatFilenameAllocatorTest.ReleaseNullIsNoOp (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.ForeignPointersAssert
+131: [       OK ] FatFilenameAllocatorTest.ForeignPointersAssert (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.DoubleFreeAsserts
+131: [       OK ] FatFilenameAllocatorTest.DoubleFreeAsserts (0 ms)
+131: [ RUN      ] FatFilenameAllocatorTest.ReleaseOfNeverAllocatedSlotAsserts
+131: [       OK ] FatFilenameAllocatorTest.ReleaseOfNeverAllocatedSlotAsserts (0 ms)
+131: [----------] 11 tests from FatFilenameAllocatorTest (1 ms total)
+131: 
+131: [----------] 1 test from FatFilenameAllocatorThreadTest
+131: [ RUN      ] FatFilenameAllocatorThreadTest.ConcurrentAllocateReleaseNeverSharesASlot
+131: [       OK ] FatFilenameAllocatorThreadTest.ConcurrentAllocateReleaseNeverSharesASlot (378 ms)
+131: [----------] 1 test from FatFilenameAllocatorThreadTest (378 ms total)
+131: 
+131: [----------] Global test environment tear-down
+131: [==========] 14 tests from 3 test suites ran. (412 ms total)
+131: [  PASSED  ] 14 tests.
+1/1 Test #131: fprime-zephyr_Fs_FatFilenameAllocator_ut_exe ...   Passed    0.44 sec
+
+The following tests passed:
+	fprime-zephyr_Fs_FatFilenameAllocator_ut_exe
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   6.51 sec
