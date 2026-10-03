@@ -1,0 +1,35 @@
+ELF: build-fprime-automatic-zephyr/zephyr/zephyr.elf
+--- wrap flags in link command:
+./CMakeFiles/CMakeConfigureLog.yaml:       2 -Wl,--wrap=ff_memalloc       2 -Wl,--wrap=ff_memfree 
+./build.ninja:       2 -Wl,--wrap=ff_memalloc       2 -Wl,--wrap=ff_memfree 
+--- symbols:
+20001c08 b Zephyr::(anonymous namespace)::s_pool
+10114528 T __wrap_ff_memalloc
+101145cc T __wrap_ff_memfree
+1010f398 T ff_mutex_create
+10180d06 T ff_mutex_delete
+1010f3d8 T ff_mutex_give
+1010f3b4 T ff_mutex_take
+__wrap_ff_memalloc call sites: 10
+__wrap_ff_memfree call sites: 13
+ff_memalloc call sites: 0
+ff_memfree call sites: 0
+k_malloc call sites: 0
+--- callers of __wrap_ff_memalloc:
+dir_clear
+f_mkdir
+f_mkfs
+f_open
+f_opendir
+f_readdir
+f_rename
+f_stat
+f_sync
+f_unlink
+--- static ctor check (allocator-related; the two below belong to unrelated PROVES mallocator objects):
+1015bf0c t _GLOBAL__sub_I__ZN8ComCcsds10Allocation18mallocatorInstanceE
+101156b4 t _GLOBAL__sub_I_mallocator
+--- size:
+   text	   data	    bss	    dec	    hex	filename
+ 676392	    624	 300829	 977845	  eebb5	build-fprime-automatic-zephyr/zephyr/zephyr.elf
+20001c08 000011b0 b Zephyr::(anonymous namespace)::s_pool
