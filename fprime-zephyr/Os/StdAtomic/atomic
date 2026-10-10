@@ -10,8 +10,15 @@
 #undef EMPTY
 #endif
 
+// This shim is only equivalent to lock-free atomics when k_spin_lock reduces to an interrupt mask,
+// which Zephyr guarantees solely on single-core (non-SMP) targets. See is_lock_free() below.
+#ifdef CONFIG_SMP
+#error "fprime-zephyr StdAtomic shim requires a single-core (non-SMP) Zephyr target"
+#endif
+
 // Lock-free property macros (2 = always lock-free). Every std::atomic<T> below uses the same
-// k_spinlock mechanism regardless of width, so every type matches is_always_lock_free.
+// k_spinlock mechanism regardless of width, so every type matches is_always_lock_free (see
+// is_lock_free() for why that claim holds).
 #define ATOMIC_BOOL_LOCK_FREE 2
 #define ATOMIC_CHAR_LOCK_FREE 2
 #define ATOMIC_CHAR16_T_LOCK_FREE 2
@@ -146,11 +153,12 @@ public:
         return old;
     }
 
-    // k_spin_lock says "the calling thread is guaranteed not to be suspended or
-    // interrupted on its current CPU until it calls k_spin_unlock()"
-    //
-    // This implies that k_spin_lock on Zephyr meets the lock free guarantee as
-    // forward process can be made.
+    // Not lock-free in the C++ standard's sense: every operation takes m_lock. On a single-core
+    // (non-SMP) Zephyr target, however, k_spin_lock reduces to arch_irq_lock(), so the holder can
+    // be neither preempted nor interrupted and the lock can never be observed held. Code that
+    // needs lock-free atomics for ISR safety (e.g. Os/Generic/LocklessPriorityQueue) therefore
+    // gets the property it depends on. Exceptions: handlers that irq_lock does not mask (NMI,
+    // HardFault) and cores Zephyr does not manage must not use these atomics.
     bool is_lock_free() const noexcept {
         return true;
     }
