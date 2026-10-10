@@ -24,6 +24,16 @@ namespace {
 // SX127x RegModemStat: a packet is mid-air when signal synchronized (0x08) or header valid (0x02).
 // RX on-going (0x04) is set for the whole of RxContinuous mode and so does not indicate a packet.
 constexpr U8 SX127X_MODEM_STAT_RX_ACTIVE_MASK = 0x0A;
+#if defined(CONFIG_HAS_SEMTECH_SX1276)
+// SX1276 RegRssiValue offsets for the high-frequency (> 525 MHz) and low-frequency ports
+constexpr I16 SX127X_RSSI_OFFSET_HF = -157;
+constexpr I16 SX127X_RSSI_OFFSET_LF = -164;
+constexpr U32 SX127X_MID_BAND_HZ = 525000000;
+#elif defined(CONFIG_HAS_SEMTECH_SX1272)
+constexpr I16 SX127X_RSSI_OFFSET_HF = -139;
+constexpr I16 SX127X_RSSI_OFFSET_LF = -139;
+constexpr U32 SX127X_MID_BAND_HZ = 0;
+#endif
 }  // namespace
 
 // Margin past a continuous wave's duration for the driver to release the modem
@@ -120,8 +130,19 @@ bool LoRa ::receiveInProgress() {
 #endif
 }
 
+bool LoRa ::channelEnergyDetected() {
+#if defined(ZEPHYR_LORA_HAS_MODEM_STATUS)
+    // Instantaneous in-band RSSI catches a transmission at any point, including one whose preamble was missed
+    const I16 offset = (BASE_CONFIG.frequency > SX127X_MID_BAND_HZ) ? SX127X_RSSI_OFFSET_HF : SX127X_RSSI_OFFSET_LF;
+    const I16 rssi = static_cast<I16>(offset + static_cast<I16>(Radio.Read(REG_LR_RSSIVALUE)));
+    return rssi > LoRaConfig::RSSI_BUSY_THRESHOLD_DBM;
+#else
+    return false;
+#endif
+}
+
 bool LoRa ::channelBusy() {
-    return this->receiveInProgress() ||
+    return this->receiveInProgress() || this->channelEnergyDetected() ||
            ((k_uptime_get_32() - this->m_last_rx_ms.load()) < LoRaConfig::RX_HOLDOFF_MS);
 }
 

@@ -47,7 +47,11 @@ class LoRa final : public LoRaComponentBase {
     //! True when the modem reports a packet reception in progress (false on radios without status support)
     bool receiveInProgress();
 
-    //! True while a packet is mid-air or within LoRaConfig::RX_HOLDOFF_MS of the last received packet
+    //! True when in-band RSSI exceeds LoRaConfig::RSSI_BUSY_THRESHOLD_DBM (false on radios without status support)
+    bool channelEnergyDetected();
+
+    //! True while a packet is mid-air, the channel carries energy, or within LoRaConfig::RX_HOLDOFF_MS of the last
+    //! received packet
     bool channelBusy();
 
     // ----------------------------------------------------------------------

@@ -11,7 +11,8 @@ lora_signal_bandwidth BANDWIDTH = BW_125_KHZ;  //!< LoRa bandwidth
 const I8 TX_POWER = 14;                        //!< LoRa transmission power in dBm
 const U16 PREAMBLE_LENGTH = 8;                 //!< LoRa preamble length
 U8 HEADER[] = {0, 0, 0, 0};                    //!< LoRa header (not used)
-const U32 RX_HOLDOFF_MS = 500;                 //!< Transmit is held off this long after the last received packet, spanning gaps in an uplink burst
+const U32 RX_HOLDOFF_MS = 100;                 //!< Transmit is held off this long after the last received packet, spanning gaps in an uplink burst
+const I16 RSSI_BUSY_THRESHOLD_DBM = -80;       //!< Channel is busy when in-band RSSI exceeds this (dBm); must sit above the local noise floor
 const U32 DEFERRED_TX_RECOVERY_MS = 2000;      //!< A deferred transmit's recovery SUCCESS is forced after this long; > max SF12/BW125 air time
 }  // namespace LoRaConfig
 #endif  // LORA_CFG_HPP
