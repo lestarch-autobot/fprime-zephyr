@@ -141,9 +141,13 @@ bool LoRa ::channelEnergyDetected() {
 #endif
 }
 
-bool LoRa ::channelBusy() {
-    return this->receiveInProgress() || this->channelEnergyDetected() ||
+bool LoRa ::packetInProgress() {
+    return this->receiveInProgress() ||
            ((k_uptime_get_32() - this->m_last_rx_ms.load()) < LoRaConfig::RX_HOLDOFF_MS);
+}
+
+bool LoRa ::channelBusy() {
+    return this->packetInProgress() || this->channelEnergyDetected();
 }
 
 LoRa::Status LoRa ::enableRx(bool initial) {
@@ -188,12 +192,40 @@ void LoRa ::dataIn_handler(FwIndexType portNum, Fw::Buffer& data, const ComCfg::
     FW_ASSERT(device_is_ready(this->m_lora_device));
     Fw::Success returnStatus = Fw::Success::FAILURE;
     bool deferred = false;
-    if ((this->m_transmit_enabled == TransmitState::ENABLED) && this->channelBusy()) {
+    U32 busy_ms = 0;
+    if (this->m_transmit_enabled == TransmitState::ENABLED) {
+        // A packet the modem has locked onto (or the holdoff after one) always defers: another radio is talking.
+        // Channel energy alone defers only for MAX_TX_DEFER_MS: energy that outlasts any packet is noise or
+        // jamming, and waiting on it would silence this radio for as long as it persists
+        const bool packet = this->packetInProgress();
+        const bool energy = !packet && this->channelEnergyDetected();
+        Os::ScopeLock recoveryLock(this->m_recovery_mutex);
+        if (energy) {
+            const U32 now = k_uptime_get_32();
+            if (!this->m_busy_wait_active) {
+                this->m_busy_wait_active = true;
+                this->m_busy_since_ms = now;
+            }
+            busy_ms = now - this->m_busy_since_ms;
+        }
+        deferred = packet || (energy && (busy_ms < LoRaConfig::MAX_TX_DEFER_MS));
+    }
+    if (deferred) {
         // Defer rather than abort the receive; run_handler emits the recovery SUCCESS owed for this FAILURE
-        deferred = true;
         this->m_transmits_deferred++;
         this->tlmWrite_TransmitsDeferred(this->m_transmits_deferred);
     } else if ((this->m_transmit_enabled == TransmitState::ENABLED) && !this->updateContinuousWave()) {
+        {
+            Os::ScopeLock recoveryLock(this->m_recovery_mutex);
+            this->m_busy_wait_active = false;
+        }
+        if (busy_ms >= LoRaConfig::MAX_TX_DEFER_MS) {
+            this->m_transmits_forced++;
+            this->tlmWrite_TransmitsForced(this->m_transmits_forced);
+            this->log_WARNING_LO_ChannelBusyTimeout(busy_ms);
+        } else {
+            this->log_WARNING_LO_ChannelBusyTimeout_ThrottleClear();
+        }
         Status status = this->enableTx();
         if (status == Status::SUCCESS) {
             (void)::memcpy(this->m_send_buffer, LoRaConfig::HEADER, sizeof(LoRaConfig::HEADER));
@@ -253,10 +285,18 @@ void LoRa ::run_handler(FwIndexType portNum, U32 context) {
     {
         // Separate from m_mutex so the rate group is never blocked behind a transmit in progress
         Os::ScopeLock recoveryLock(this->m_recovery_mutex);
+        const U32 now = k_uptime_get_32();
+        const bool packet = this->packetInProgress();
+        const bool busy = packet || this->channelEnergyDetected();
         if (this->m_recovery_pending) {
-            recover = ((k_uptime_get_32() - this->m_deferred_at_ms) >= LoRaConfig::DEFERRED_TX_RECOVERY_MS) ||
-                      !this->channelBusy();
+            // Also recover once the channel-energy wait expires, so the retry's resend goes out at the bound
+            recover = !busy || ((now - this->m_deferred_at_ms) >= LoRaConfig::DEFERRED_TX_RECOVERY_MS) ||
+                      (!packet && this->m_busy_wait_active &&
+                       ((now - this->m_busy_since_ms) >= LoRaConfig::MAX_TX_DEFER_MS));
             this->m_recovery_pending = !recover;
+        } else if (!busy) {
+            // Nothing is waiting and the channel is clear: the busy episode is over, the next starts fresh
+            this->m_busy_wait_active = false;
         }
     }
     // Exactly one recovery SUCCESS per deferral, emitted outside the lock so the retry may resend immediately

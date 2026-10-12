@@ -54,6 +54,9 @@ class LoRa final : public LoRaComponentBase {
     //! received packet
     bool channelBusy();
 
+    //! Check whether a packet the modem has locked onto is in progress, or one ended within RX_HOLDOFF_MS
+    bool packetInProgress();
+
     // ----------------------------------------------------------------------
     // Handler implementations for typed input ports
     // ----------------------------------------------------------------------
@@ -146,6 +149,9 @@ class LoRa final : public LoRaComponentBase {
     U32 m_transmits_deferred = 0;    //!< Total transmits deferred for an in-progress receive
     bool m_recovery_pending = false; //!< A deferral FAILURE was emitted and its recovery SUCCESS is owed
     U32 m_deferred_at_ms = 0;        //!< Uptime in ms when the transmit was deferred
+    U32 m_transmits_forced = 0;      //!< Total transmits sent into channel energy persisting longer than MAX_TX_DEFER_MS
+    bool m_busy_wait_active = false; //!< A transmit has been waiting on channel energy since m_busy_since_ms
+    U32 m_busy_since_ms = 0;         //!< Uptime in ms when the current channel-energy wait began
     Os::Mutex m_recovery_mutex;      //!< Guards the deferral state shared between dataIn and run
     std::atomic<U32> m_last_rx_ms{0};  //!< Uptime in ms of the last received packet
 };

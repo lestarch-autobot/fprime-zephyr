@@ -14,5 +14,6 @@ U8 HEADER[] = {0, 0, 0, 0};                    //!< LoRa header (not used)
 const U32 RX_HOLDOFF_MS = 100;                 //!< Transmit is held off this long after the last received packet, spanning gaps in an uplink burst
 const I16 RSSI_BUSY_THRESHOLD_DBM = -80;       //!< Channel is busy when in-band RSSI exceeds this (dBm); must sit above the local noise floor
 const U32 DEFERRED_TX_RECOVERY_MS = 2000;      //!< A deferred transmit's recovery SUCCESS is forced after this long; > max SF12/BW125 air time
+const U32 MAX_TX_DEFER_MS = 3000;              //!< A transmit held off this long by channel energy alone is sent anyway (a packet the modem has locked onto always defers): energy outlasting any packet is noise or jamming
 }  // namespace LoRaConfig
 #endif  // LORA_CFG_HPP

@@ -80,6 +80,11 @@ module Zephyr {
             format "LoRa frequency set to {} Hz"
 
         @ Event to indicate allocation failure
+        @ Channel energy with no decodable packet persisted longer than MAX_TX_DEFER_MS (noise or jamming); the transmit was sent anyway
+        event ChannelBusyTimeout(busy_ms: U32) severity warning low \
+            format "Channel busy for {} ms, transmitting anyway" \
+            throttle 5
+
         event AllocationFailed(allocation_size: FwSizeType) severity warning high \
             format "Failed to allocate buffer of: {} bytes" throttle 2
 
@@ -106,6 +111,9 @@ module Zephyr {
 
         @ Count of transmits deferred because a receive was in progress
         telemetry TransmitsDeferred: U32 update on change
+
+        @ Count of transmits sent into channel energy that persisted longer than MAX_TX_DEFER_MS (noise or jamming)
+        telemetry TransmitsForced: U32 update on change
 
         ###############################################################################
         # Standard AC Ports: Required for Channels, Events, Commands, and Parameters  #
