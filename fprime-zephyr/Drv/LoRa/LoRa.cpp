@@ -135,6 +135,7 @@ bool LoRa ::channelEnergyDetected() {
     // Instantaneous in-band RSSI catches a transmission at any point, including one whose preamble was missed
     const I16 offset = (BASE_CONFIG.frequency > SX127X_MID_BAND_HZ) ? SX127X_RSSI_OFFSET_HF : SX127X_RSSI_OFFSET_LF;
     const I16 rssi = static_cast<I16>(offset + static_cast<I16>(Radio.Read(REG_LR_RSSIVALUE)));
+    this->tlmWrite_ChannelRssi(rssi);
     return rssi > LoRaConfig::RSSI_BUSY_THRESHOLD_DBM;
 #else
     return false;

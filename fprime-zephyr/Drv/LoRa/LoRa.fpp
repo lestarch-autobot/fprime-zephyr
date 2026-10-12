@@ -100,6 +100,9 @@ module Zephyr {
         @ Last received SNR
         telemetry LastSnr: I8 update on change
 
+        @ In-band RSSI (dBm) sampled by the carrier sense before each transmit: the noise floor when the channel is idle
+        telemetry ChannelRssi: I16 update on change
+
         @ Enable LoRa transmission
         sync input port enableTransmit: Fw.Signal
 
