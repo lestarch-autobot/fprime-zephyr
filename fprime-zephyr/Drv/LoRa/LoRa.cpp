@@ -12,18 +12,15 @@
 #if defined(CONFIG_HAS_SEMTECH_SX1276)
 #include <radio.h>
 #include <sx1276/sx1276Regs-LoRa.h>
-#define ZEPHYR_LORA_HAS_MODEM_STATUS 1
+#define ZEPHYR_LORA_HAS_RSSI 1
 #elif defined(CONFIG_HAS_SEMTECH_SX1272)
 #include <radio.h>
 #include <sx1272/sx1272Regs-LoRa.h>
-#define ZEPHYR_LORA_HAS_MODEM_STATUS 1
+#define ZEPHYR_LORA_HAS_RSSI 1
 #endif
 namespace Zephyr {
 
 namespace {
-// SX127x RegModemStat: a packet is mid-air when signal synchronized (0x08) or header valid (0x02).
-// RX on-going (0x04) is set for the whole of RxContinuous mode and so does not indicate a packet.
-constexpr U8 SX127X_MODEM_STAT_RX_ACTIVE_MASK = 0x0A;
 #if defined(CONFIG_HAS_SEMTECH_SX1276)
 // SX1276 RegRssiValue offsets for the high-frequency (> 525 MHz) and low-frequency ports
 constexpr I16 SX127X_RSSI_OFFSET_HF = -157;
@@ -106,8 +103,7 @@ LoRa::Status LoRa ::enableTx() {
     const LoRaBandwidth bandwidth = this->paramGet_BANDWIDTH_TX(isValid);
     FW_ASSERT((isValid == Fw::ParamValid::VALID) || (isValid == Fw::ParamValid::DEFAULT), static_cast<FwAssertArgType>(isValid));
 
-    // Release the idle RxContinuous listen so the driver grants the modem to TX; callers must first
-    // check receiveInProgress() so a packet mid-air is never aborted here
+    // Release the idle RxContinuous listen so the driver grants the modem to TX
     int status = lora_recv_async(this->m_lora_device, nullptr, nullptr);
     if (status == 0) {
         // Update BASE_CONFIG in-place to save on stack space
@@ -121,18 +117,9 @@ LoRa::Status LoRa ::enableTx() {
     return (status < 0) ? Status::ERROR : Status::SUCCESS;
 }
 
-bool LoRa ::receiveInProgress() {
-#if defined(ZEPHYR_LORA_HAS_MODEM_STATUS)
-    const U8 modem_status = Radio.Read(REG_LR_MODEMSTAT);
-    return (modem_status & SX127X_MODEM_STAT_RX_ACTIVE_MASK) != 0;
-#else
-    return false;
-#endif
-}
-
 bool LoRa ::channelEnergyDetected() {
-#if defined(ZEPHYR_LORA_HAS_MODEM_STATUS)
-    // Instantaneous in-band RSSI catches a transmission at any point, including one whose preamble was missed
+#if defined(ZEPHYR_LORA_HAS_RSSI)
+    // Instantaneous in-band RSSI: the HAL leaves Radio.Rssi unset, so read the register with its band offset
     const I16 offset = (BASE_CONFIG.frequency > SX127X_MID_BAND_HZ) ? SX127X_RSSI_OFFSET_HF : SX127X_RSSI_OFFSET_LF;
     const I16 rssi = static_cast<I16>(offset + static_cast<I16>(Radio.Read(REG_LR_RSSIVALUE)));
     this->tlmWrite_ChannelRssi(rssi);
@@ -140,15 +127,6 @@ bool LoRa ::channelEnergyDetected() {
 #else
     return false;
 #endif
-}
-
-bool LoRa ::packetInProgress() {
-    return this->receiveInProgress() ||
-           ((k_uptime_get_32() - this->m_last_rx_ms.load()) < LoRaConfig::RX_HOLDOFF_MS);
-}
-
-bool LoRa ::channelBusy() {
-    return this->packetInProgress() || this->channelEnergyDetected();
 }
 
 LoRa::Status LoRa ::enableRx(bool initial) {
@@ -195,11 +173,9 @@ void LoRa ::dataIn_handler(FwIndexType portNum, Fw::Buffer& data, const ComCfg::
     bool deferred = false;
     U32 busy_ms = 0;
     if (this->m_transmit_enabled == TransmitState::ENABLED) {
-        // A packet the modem has locked onto (or the holdoff after one) always defers: another radio is talking.
-        // Channel energy alone defers only for MAX_TX_DEFER_MS: energy that outlasts any packet is noise or
-        // jamming, and waiting on it would silence this radio for as long as it persists
-        const bool packet = this->packetInProgress();
-        const bool energy = !packet && this->channelEnergyDetected();
+        // Channel energy defers the transmit, but only for MAX_TX_DEFER_MS: energy that outlasts any packet is
+        // noise or jamming, and waiting on it would silence this radio for as long as it persists
+        const bool energy = this->channelEnergyDetected();
         Os::ScopeLock recoveryLock(this->m_recovery_mutex);
         if (energy) {
             const U32 now = k_uptime_get_32();
@@ -209,7 +185,7 @@ void LoRa ::dataIn_handler(FwIndexType portNum, Fw::Buffer& data, const ComCfg::
             }
             busy_ms = now - this->m_busy_since_ms;
         }
-        deferred = packet || (energy && (busy_ms < LoRaConfig::MAX_TX_DEFER_MS));
+        deferred = energy && (busy_ms < LoRaConfig::MAX_TX_DEFER_MS);
     }
     if (deferred) {
         // Defer rather than abort the receive; run_handler emits the recovery SUCCESS owed for this FAILURE
@@ -287,13 +263,11 @@ void LoRa ::run_handler(FwIndexType portNum, U32 context) {
         // Separate from m_mutex so the rate group is never blocked behind a transmit in progress
         Os::ScopeLock recoveryLock(this->m_recovery_mutex);
         const U32 now = k_uptime_get_32();
-        const bool packet = this->packetInProgress();
-        const bool busy = packet || this->channelEnergyDetected();
+        const bool busy = this->channelEnergyDetected();
         if (this->m_recovery_pending) {
             // Also recover once the channel-energy wait expires, so the retry's resend goes out at the bound
             recover = !busy || ((now - this->m_deferred_at_ms) >= LoRaConfig::DEFERRED_TX_RECOVERY_MS) ||
-                      (!packet && this->m_busy_wait_active &&
-                       ((now - this->m_busy_since_ms) >= LoRaConfig::MAX_TX_DEFER_MS));
+                      (this->m_busy_wait_active && ((now - this->m_busy_since_ms) >= LoRaConfig::MAX_TX_DEFER_MS));
             this->m_recovery_pending = !recover;
         } else if (!busy) {
             // Nothing is waiting and the channel is clear: the busy episode is over, the next starts fresh
@@ -309,7 +283,6 @@ void LoRa ::run_handler(FwIndexType portNum, U32 context) {
 
 void LoRa ::receive(U8* data, U16 size, I16 rssi, I8 snr) {
     FW_ASSERT(data != nullptr);
-    this->m_last_rx_ms.store(k_uptime_get_32());
     const FwSizeType payload_size = static_cast<FwSizeType>(size - sizeof(LoRaConfig::HEADER));
     Fw::Buffer buffer = this->allocate_out(0, payload_size);
     if (buffer.isValid()) {

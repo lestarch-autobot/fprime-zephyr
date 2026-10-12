@@ -80,7 +80,7 @@ module Zephyr {
             format "LoRa frequency set to {} Hz"
 
         @ Event to indicate allocation failure
-        @ Channel energy with no decodable packet persisted longer than MAX_TX_DEFER_MS (noise or jamming); the transmit was sent anyway
+        @ Channel energy persisted longer than MAX_TX_DEFER_MS (noise or jamming); the transmit was sent anyway
         event ChannelBusyTimeout(busy_ms: U32) severity warning low \
             format "Channel busy for {} ms, transmitting anyway" \
             throttle 5
@@ -100,7 +100,7 @@ module Zephyr {
         @ Last received SNR
         telemetry LastSnr: I8 update on change
 
-        @ In-band RSSI (dBm) sampled by the carrier sense before each transmit: the noise floor when the channel is idle
+        @ In-band RSSI (dBm) sampled before each transmit and on each run tick: the noise floor when the channel is idle
         telemetry ChannelRssi: I16 update on change
 
         @ Enable LoRa transmission
@@ -112,7 +112,7 @@ module Zephyr {
         @ Emitted once when LoRa transmit is first enabled
         output port loraFirstStart: Fw.Signal
 
-        @ Count of transmits deferred because a receive was in progress
+        @ Count of transmits deferred because the channel carried energy above RSSI_BUSY_THRESHOLD_DBM
         telemetry TransmitsDeferred: U32 update on change
 
         @ Count of transmits sent into channel energy that persisted longer than MAX_TX_DEFER_MS (noise or jamming)

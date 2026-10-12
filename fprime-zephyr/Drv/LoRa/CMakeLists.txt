@@ -23,7 +23,7 @@ register_fprime_library(
        default_zephyr-config
 )
 
-# Modem status is read through the loramac-node radio HAL when a Semtech SX127x is present
+# Channel RSSI is read through the loramac-node radio HAL when a Semtech SX127x is present
 if(DEFINED ZEPHYR_LORAMAC_NODE_MODULE_DIR)
     target_include_directories(fprime-zephyr_Drv_LoRa PRIVATE "${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio")
 endif()
