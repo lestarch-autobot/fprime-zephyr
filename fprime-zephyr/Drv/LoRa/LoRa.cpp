@@ -271,12 +271,11 @@ void LoRa ::run_handler(FwIndexType portNum, U32 context) {
             // Nothing is waiting and the channel is clear: the busy episode is over, the next starts fresh
             this->m_busy_wait_active = false;
         }
-        if (recover) {
-            this->m_recovery_pending = false;
-        }
     }
-    // Exactly one recovery SUCCESS per deferral, emitted outside the lock so the retry may resend immediately
+    // Exactly one recovery SUCCESS per deferral, emitted outside the lock so the retry may resend immediately.
+    // Cleared before the SUCCESS: the resend it releases may be deferred again and re-arm the flag
     if (recover) {
+        this->m_recovery_pending = false;
         Fw::Success status = Fw::Success::SUCCESS;
         this->comStatusOut_out(0, status);
     }
