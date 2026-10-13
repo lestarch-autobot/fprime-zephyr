@@ -10,28 +10,15 @@
 #include <zephyr/kernel.h>
 #include <errno.h>
 #if defined(CONFIG_HAS_SEMTECH_SX1276)
-#include <radio.h>
-#include <sx1276/sx1276Regs-LoRa.h>
+#include <sx1276/sx1276.h>
+#define SX127xReadRssi SX1276ReadRssi
 #define ZEPHYR_LORA_HAS_RSSI 1
 #elif defined(CONFIG_HAS_SEMTECH_SX1272)
-#include <radio.h>
-#include <sx1272/sx1272Regs-LoRa.h>
+#include <sx1272/sx1272.h>
+#define SX127xReadRssi SX1272ReadRssi
 #define ZEPHYR_LORA_HAS_RSSI 1
 #endif
 namespace Zephyr {
-
-namespace {
-#if defined(CONFIG_HAS_SEMTECH_SX1276)
-// SX1276 RegRssiValue offsets for the high-frequency (> 525 MHz) and low-frequency ports
-constexpr I16 SX127X_RSSI_OFFSET_HF = -157;
-constexpr I16 SX127X_RSSI_OFFSET_LF = -164;
-constexpr U32 SX127X_MID_BAND_HZ = 525000000;
-#elif defined(CONFIG_HAS_SEMTECH_SX1272)
-constexpr I16 SX127X_RSSI_OFFSET_HF = -139;
-constexpr I16 SX127X_RSSI_OFFSET_LF = -139;
-constexpr U32 SX127X_MID_BAND_HZ = 0;
-#endif
-}  // namespace
 
 // Margin past a continuous wave's duration for the driver to release the modem
 static constexpr U32 CW_TEARDOWN_MARGIN_US = 250000;
@@ -119,9 +106,9 @@ LoRa::Status LoRa ::enableTx() {
 
 bool LoRa ::channelEnergyDetected() {
 #if defined(ZEPHYR_LORA_HAS_RSSI)
-    // Instantaneous in-band RSSI: the HAL leaves Radio.Rssi unset, so read the register with its band offset
-    const I16 offset = (BASE_CONFIG.frequency > SX127X_MID_BAND_HZ) ? SX127X_RSSI_OFFSET_HF : SX127X_RSSI_OFFSET_LF;
-    const I16 rssi = static_cast<I16>(offset + static_cast<I16>(Radio.Read(REG_LR_RSSIVALUE)));
+    // Instantaneous in-band RSSI from the loramac-node chip driver Zephyr's sx127x.c is built on (Zephyr's own
+    // Radio table leaves Radio.Rssi NULL); one register read plus the band offset
+    const I16 rssi = static_cast<I16>(SX127xReadRssi(MODEM_LORA));
     this->tlmWrite_ChannelRssi(rssi);
     return rssi > LoRaConfig::RSSI_BUSY_THRESHOLD_DBM;
 #else

@@ -10,9 +10,9 @@ transmit, so an unconnected `run` port stalls the uplink chain after the first d
 
 ### Carrier Sense
 
-The LoRa modem is half-duplex. Before transmitting, `dataIn` reads the SX127x in-band RSSI register (via the
-loramac-node HAL `Radio.Read`, available when `CONFIG_HAS_SEMTECH_SX1276`/`SX1272` is set; the HAL's own `Radio.Rssi`
-is left unset by Zephyr) and, when it exceeds `RSSI_BUSY_THRESHOLD_DBM`, returns the buffer through `dataReturnOut`
+The LoRa modem is half-duplex. Before transmitting, `dataIn` reads the SX127x in-band RSSI through the loramac-node
+chip driver's `SX1276ReadRssi`/`SX1272ReadRssi` (the driver Zephyr's `sx127x.c` is built on, available when
+`CONFIG_HAS_SEMTECH_SX1276`/`SX1272` is set; Zephyr's own `Radio` table leaves `Radio.Rssi` NULL) and, when it exceeds `RSSI_BUSY_THRESHOLD_DBM`, returns the buffer through `dataReturnOut`
 and emits `Fw::Success::FAILURE` without transmitting. RSSI sees a transmission at any point in the packet, not only
 its preamble, so no modem-status or post-receive holdoff check is needed. Per the Communication Adapter Protocol the
 component then owes one recovery `SUCCESS`, which `run` emits once the channel is clear or after
