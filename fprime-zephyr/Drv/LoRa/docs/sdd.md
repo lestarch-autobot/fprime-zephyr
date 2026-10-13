@@ -15,8 +15,9 @@ chip driver's `SX1276ReadRssi`/`SX1272ReadRssi` (the driver Zephyr's `sx127x.c` 
 `CONFIG_HAS_SEMTECH_SX1276`/`SX1272` is set; Zephyr's own `Radio` table leaves `Radio.Rssi` NULL) and, when it exceeds `RSSI_BUSY_THRESHOLD_DBM`, returns the buffer through `dataReturnOut`
 and emits `Fw::Success::FAILURE` without transmitting. RSSI sees a transmission at any point in the packet, not only
 its preamble, so no modem-status or post-receive holdoff check is needed. Per the Communication Adapter Protocol the
-component then owes one recovery `SUCCESS`, which `run` emits once the channel is clear or after
-`DEFERRED_TX_RECOVERY_MS`, whichever comes first. Exactly one `SUCCESS` is emitted per deferral, and it is armed only
+component then owes one recovery `SUCCESS`, which `run` emits once the channel is clear or once the channel has
+carried energy for `MAX_TX_DEFER_MS`, whichever comes first; a retry released at that bound is sent regardless of the
+energy, so a released frame is never deferred again by the same busy episode. Exactly one `SUCCESS` is emitted per deferral, and it is armed only
 after the `FAILURE` has been delivered so it can never overtake it. No events are emitted on the send path for a
 deferral; deferrals are counted in the `TransmitsDeferred` channel.
 
@@ -48,7 +49,7 @@ the sending thread rather than executed on the rate group.
 | LORA-10 | The LoRa component shall expose enableTransmit and disableTransmit ports to control transmission | Unit-Test |
 | LORA-11 | The TRANSMIT command and enableTransmit/disableTransmit ports shall enable or disable the com-status ping-pong | Unit-Test |
 | LORA-12 | The LoRa component shall not transmit while in-band RSSI exceeds `RSSI_BUSY_THRESHOLD_DBM`; it shall return the buffer and emit `FAILURE` instead | Hardware Test |
-| LORA-13 | The LoRa component shall emit exactly one recovery `SUCCESS`, from the `run` port, after each deferred transmit once the channel is no longer busy or `DEFERRED_TX_RECOVERY_MS` elapses |
+| LORA-13 | The LoRa component shall emit exactly one recovery `SUCCESS`, from the `run` port, after each deferred transmit once the channel is no longer busy or has carried energy for `MAX_TX_DEFER_MS` |
 | LORA-15 | The LoRa component shall transmit regardless of RSSI once a transmit has been held off for `MAX_TX_DEFER_MS`, counting it in `TransmitsForced` | Hardware Test |
 | LORA-14 | The LoRa component shall not emit events on the send path for deferrals; it shall telemeter the `TransmitsDeferred` count | Inspection |
 
@@ -76,10 +77,9 @@ the sending thread rather than executed on the rate group.
 | TX_POWER    | Transmission power of the raio |
 | PREAMBLE    | Preamble length in bytes |
 | RSSI_BUSY_THRESHOLD_DBM | In-band RSSI in dBm above which the channel is busy; 32767 disables carrier sense |
-| DEFERRED_TX_RECOVERY_MS | Maximum time in ms a deferred transmit waits for the channel to clear before the recovery SUCCESS is forced |
-| MAX_TX_DEFER_MS | Time in ms after which a transmit held off by channel energy is sent anyway |
+| MAX_TX_DEFER_MS | Bound in ms on a channel-energy wait: a deferred transmit is released once the channel clears or this long has passed, and a transmit held this long is sent anyway |
 
-Projects that override `zephyr-config/LoRaCfg.hpp` must define `RSSI_BUSY_THRESHOLD_DBM`, `DEFERRED_TX_RECOVERY_MS` and `MAX_TX_DEFER_MS`. Carrier sense
+Projects that override `zephyr-config/LoRaCfg.hpp` must define `RSSI_BUSY_THRESHOLD_DBM` and `MAX_TX_DEFER_MS`. Carrier sense
 requires the loramac-node module (`ZEPHYR_LORAMAC_NODE_MODULE_DIR`) and an SX127x radio.
 
 Projects that override `LoRaCfg.hpp` must define MIN_FREQUENCY and MAX_FREQUENCY, and FREQUENCY must lie between them (checked at compile time). Setting both to FREQUENCY keeps SET_FREQ disabled.

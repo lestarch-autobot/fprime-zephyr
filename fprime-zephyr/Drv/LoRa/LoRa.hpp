@@ -111,6 +111,24 @@ class LoRa final : public LoRaComponentBase {
     void setTransmitState(TransmitState state);
 
   private:
+    //! Result of the pre-transmit carrier sense
+    enum class ChannelState {
+        CLEAR,        //!< No channel energy: transmit
+        BUSY,         //!< Channel energy for less than MAX_TX_DEFER_MS: defer
+        BUSY_TIMEOUT  //!< Channel energy for MAX_TX_DEFER_MS or longer: transmit anyway
+    };
+
+    //! Carrier sense for a transmit attempt, tracking how long the channel has carried energy
+    //!
+    //! \param busy_ms: set to the length of the current busy episode in ms (0 when CLEAR)
+    //! \return the channel state deciding the transmit
+    ChannelState checkChannel(U32& busy_ms);
+
+    //! Send one frame: enable TX, transmit the header and data, re-enable RX
+    //!
+    //! \return SUCCESS when the frame was sent
+    Fw::Success transmit(Fw::Buffer& data);
+
     //! Re-arm receive if the active continuous wave has ended
     //!
     //! \return true while a continuous wave is still active
@@ -137,7 +155,6 @@ class LoRa final : public LoRaComponentBase {
     FwSizeType m_bytes_received = 0; //!< Total bytes received telemetry
     U32 m_transmits_deferred = 0;    //!< Total transmits deferred for channel energy
     bool m_recovery_pending = false; //!< A deferral FAILURE was emitted and its recovery SUCCESS is owed
-    U32 m_deferred_at_ms = 0;        //!< Uptime in ms when the transmit was deferred
     U32 m_transmits_forced = 0;      //!< Total transmits sent into channel energy persisting longer than MAX_TX_DEFER_MS
     bool m_busy_wait_active = false; //!< A transmit has been waiting on channel energy since m_busy_since_ms
     U32 m_busy_since_ms = 0;         //!< Uptime in ms when the current channel-energy wait began
